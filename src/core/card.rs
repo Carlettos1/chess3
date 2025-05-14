@@ -4,6 +4,12 @@ pub struct Card {
     pub mana_cost: u32,
 }
 
+impl Card {
+    pub fn new(id: u32, mana_cost: u32) -> Self {
+        Self { id, mana_cost }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlayedCard {
     pub card: Card,

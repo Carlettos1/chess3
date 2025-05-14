@@ -21,6 +21,41 @@ pub enum Tag {
     Dead,          // DEAD
 }
 
+impl Tag {
+    pub fn on_action_done(&self, _board: &mut Board, _piece: &Piece, _action: &PieceAction) {}
+
+    pub fn on_action_received(&self, board: &mut Board, piece: &Piece, action: &PieceAction) {
+        if self == &Tag::Dead && matches!(action, PieceAction::Die(_)) {
+            return;
+        }
+        if self == &Tag::Demonic && matches!(action, PieceAction::Die(_)) {
+            board.add_mana_to_color(piece.color, 1);
+        }
+    }
+
+    pub fn can_action_be_done(
+        &self,
+        _board: &Board,
+        _piece: &Piece,
+        _action: &BasicAction,
+    ) -> bool {
+        true
+    }
+
+    pub fn can_action_be_received(
+        &self,
+        _board: &Board,
+        _piece: &Piece,
+        action: &BasicAction,
+    ) -> bool {
+        match self {
+            Tag::Immune if action == &BasicAction::Ability => false,
+            Tag::Heroic if action == &BasicAction::Attack => false,
+            _ => true,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PieceType {
     // Classic Pieces
@@ -446,8 +481,12 @@ impl PieceType {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Piece {
     pub id: u32,
+    pub color: Color,
+    pub alive: bool,
+    pub moved: bool,
     pub piece_type: PieceType,
     pub properties: Vec<Property>,
+    pub effects: Vec<AppliedEffect>,
     pub tags: Vec<Tag>,
     pub move_pattern: Pattern,
     pub take_pattern: Pattern,
@@ -456,11 +495,15 @@ pub struct Piece {
 }
 
 impl Piece {
-    pub fn new(id: u32, piece_type: PieceType) -> Self {
+    pub fn new(id: u32, color: Color, piece_type: PieceType) -> Self {
         Self {
             id,
+            color,
+            alive: true,
+            moved: false,
             piece_type,
             properties: piece_type.get_properties(),
+            effects: Vec::new(),
             tags: piece_type.get_tags(),
             move_pattern: piece_type.get_move_pattern(),
             take_pattern: piece_type.get_take_pattern(),
@@ -469,27 +512,87 @@ impl Piece {
         }
     }
 
-    pub fn can_do_action(&self, action: &Action, board: &Board) -> bool {
-        true // TODO, it should check if effects, tags, etc allow the action
+    // Action stuff
+    pub fn can_do_action(&self, action: &BasicAction, board: &Board) -> bool {
+        self.effects
+            .iter()
+            .all(|e| e.can_action_be_done(board, self))
+            && self
+                .tags
+                .iter()
+                .all(|t| t.can_action_be_done(board, self, action))
     }
 
-    pub fn can_receive_action(&self, action: &Action, board: &Board) -> bool {
-        true // TODO, it should check if effects, tags, etc allow the action
+    pub fn can_receive_action(&self, action: &BasicAction, board: &Board) -> bool {
+        self.effects
+            .iter()
+            .all(|e| e.can_action_be_received(board, self))
+            && self
+                .tags
+                .iter()
+                .all(|t| t.can_action_be_received(board, self, action))
     }
 
-    pub fn on_action_done(&mut self, action: &Action, board: &Board) {
-        // TODO, it should trigger effects, tags, etc when done the action
+    /// self is not mutable to avoid double mutation conflicts with the board
+    pub fn on_action_done(&self, action: &PieceAction, board: &mut Board) {
+        self.effects
+            .iter()
+            .for_each(|e| e.on_action_done(board, self));
+        self.tags
+            .iter()
+            .for_each(|t| t.on_action_done(board, self, action));
     }
 
-    pub fn on_action_received(&mut self, action: &Action, board: &Board) {
-        // TODO, it should trigger effects, tags, etc when received the action
+    /// self is not mutable to avoid double mutation conflicts with the board
+    pub fn on_action_received(&self, action: &PieceAction, board: &mut Board) {
+        self.effects
+            .iter()
+            .for_each(|e| e.on_action_received(board, self));
+        self.tags
+            .iter()
+            .for_each(|t| t.on_action_received(board, self, action));
     }
 
-    pub fn on_tick(&mut self, board: &mut Board) {
-        // TODO, it should trigger effects, tags, etc when the piece is on the board
+    /// self is not mutable to avoid double mutation conflicts with the board
+    pub fn on_tick(&self, board: &mut Board) {
+        self.effects.iter().for_each(|e| e.on_tick(board, self));
     }
 
-    pub fn on_expire(&mut self, board: &mut Board) {
-        // TODO, it should trigger effects, tags, etc when the piece is expired
+    /// self is not mutable to avoid double mutation conflicts with the board
+    pub fn on_expire(&self, board: &mut Board) {
+        self.effects.iter().for_each(|e| e.on_expire(board, self));
+    }
+
+    // tag stuff
+    pub fn is_bio(&self) -> bool {
+        self.tags.contains(&Tag::Biologic)
+    }
+
+    pub fn is_str(&self) -> bool {
+        self.tags.contains(&Tag::Structure)
+    }
+
+    pub fn is_imm(&self) -> bool {
+        self.tags.contains(&Tag::Immune)
+    }
+
+    pub fn is_dead(&self) -> bool {
+        self.tags.contains(&Tag::Dead)
+    }
+
+    pub fn is_hero(&self) -> bool {
+        self.tags.contains(&Tag::Heroic)
+    }
+
+    pub fn is_dem(&self) -> bool {
+        self.tags.contains(&Tag::Demonic)
+    }
+
+    pub fn is_trans(&self) -> bool {
+        self.tags.contains(&Tag::Transportable)
+    }
+
+    pub fn is_imp(&self) -> bool {
+        self.tags.contains(&Tag::Impenetrable)
     }
 }

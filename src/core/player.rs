@@ -2,9 +2,16 @@ use std::mem;
 
 use crate::prelude::*;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Color {
+    Black,
+    White,
+}
+
 #[derive(Debug, Clone)]
 pub struct Player {
     pub id: u32,
+    pub color: Color,
     pub max_movements: u32,
     pub movements: u32,
     pub max_mana: u32,
@@ -21,6 +28,7 @@ impl Player {
     pub fn new(id: u32, deck_ids: [u32; 4]) -> Self {
         Self {
             id,
+            color: Color::Black,
             max_movements: 1,
             movements: 1,
             max_mana: 2,

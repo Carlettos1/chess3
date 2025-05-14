@@ -143,6 +143,7 @@ impl Board {
             .collect()
     }
 
+    #[inline]
     pub fn get_squares_with_action(
         &self,
         from: Position,
@@ -155,10 +156,12 @@ impl Board {
                 BasicAction::Move => s.piece.is_none(),
                 BasicAction::Attack => s.piece.is_some(),
                 BasicAction::Take => s.piece.is_some(),
+                BasicAction::Ability => true,
             })
             .collect()
     }
 
+    #[inline]
     pub fn get_positions_with_action(
         &self,
         from: Position,
@@ -169,5 +172,103 @@ impl Board {
             .iter()
             .map(|s| s.pos)
             .collect()
+    }
+
+    // Piece stuff
+    pub fn kill_piece(&mut self, id: u32) {
+        if let Some(piece) = self.get_piece_mut(id) {
+            piece.alive = false;
+        }
+    }
+
+    pub fn set_piece_moved(&mut self, id: u32, moved: bool) {
+        if let Some(piece) = self.get_piece_mut(id) {
+            piece.moved = moved;
+        }
+    }
+
+    pub fn halve_effect(&mut self, id: u32, effect: Effect) {
+        if let Some(piece) = self.get_piece_mut(id) {
+            if let Some(effect) = piece.effects.iter_mut().find(|e| e.effect == effect) {
+                effect.duration /= 2;
+            }
+        }
+    }
+
+    pub fn double_effect(&mut self, id: u32, effect: Effect) {
+        if let Some(piece) = self.get_piece_mut(id) {
+            if let Some(effect) = piece.effects.iter_mut().find(|e| e.effect == effect) {
+                effect.duration *= 2;
+            }
+        }
+    }
+
+    pub fn add_effect(&mut self, id: u32, effect: Effect, duration: ChessTime) {
+        if let Some(piece) = self.get_piece_mut(id) {
+            piece.effects.push(AppliedEffect { effect, duration });
+        }
+    }
+
+    pub fn remove_effect(&mut self, id: u32, effect: Effect) {
+        if let Some(piece) = self.get_piece_mut(id) {
+            piece.effects.retain(|e| e.effect != effect);
+        }
+    }
+
+    // Player stuff
+    pub fn add_mana(&mut self, player_id: u32, amount: u32) {
+        if let Some(player) = self.get_player_mut(player_id) {
+            player.mana += amount;
+        }
+    }
+
+    pub fn add_mana_to_color(&mut self, color: Color, amount: u32) {
+        if let Some(player) = self.get_player_of_color_mut(color) {
+            player.mana += amount;
+        }
+    }
+
+    pub fn remove_mana(&mut self, player_id: u32, amount: u32) {
+        if let Some(player) = self.get_player_mut(player_id) {
+            player.mana -= amount;
+        }
+    }
+
+    pub fn remove_mana_from_color(&mut self, color: Color, amount: u32) {
+        if let Some(player) = self.get_player_of_color_mut(color) {
+            player.mana -= amount;
+        }
+    }
+
+    pub fn add_movement(&mut self, player_id: u32, amount: u32) {
+        if let Some(player) = self.get_player_mut(player_id) {
+            player.movements += amount;
+        }
+    }
+
+    pub fn add_movement_to_color(&mut self, color: Color, amount: u32) {
+        if let Some(player) = self.get_player_of_color_mut(color) {
+            player.movements += amount;
+        }
+    }
+
+    pub fn remove_movement(&mut self, player_id: u32, amount: u32) {
+        if let Some(player) = self.get_player_mut(player_id) {
+            player.movements -= amount;
+        }
+    }
+
+    pub fn remove_movement_from_color(&mut self, color: Color, amount: u32) {
+        if let Some(player) = self.get_player_of_color_mut(color) {
+            player.movements -= amount;
+        }
+    }
+
+    pub fn get_player_of_color(&self, color: Color) -> Option<&Player> {
+        self.players.iter().find(|player| player.color == color)
+    }
+
+    pub fn get_player_of_color_mut(&mut self, color: Color) -> Option<&mut Player> {
+        self.players.iter_mut().find(|player| player.color == color)
     }
 }

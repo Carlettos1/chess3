@@ -14,6 +14,7 @@ pub enum BasicAction {
     Move,
     Attack,
     Take,
+    Ability,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
